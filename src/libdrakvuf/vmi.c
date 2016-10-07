@@ -138,8 +138,8 @@ event_response_t vmi_reset_trap(vmi_instance_t vmi, vmi_event_t *event) {
     drakvuf_t drakvuf = event->data;
     PRINT_DEBUG("reset trap, switching %u->%u\n", event->slat_id, drakvuf->altp2m_idx);
     event->slat_id = drakvuf->altp2m_idx;
-    return (1u << VMI_EVENT_RESPONSE_TOGGLE_SINGLESTEP) | // Turn off singlestep
-           (1u << VMI_EVENT_RESPONSE_VMM_PAGETABLE_ID);
+    return VMI_EVENT_RESPONSE_TOGGLE_SINGLESTEP | // Turn off singlestep
+           VMI_EVENT_RESPONSE_VMM_PAGETABLE_ID;
 }
 
 /*
@@ -197,7 +197,7 @@ event_response_t post_mem_cb(vmi_instance_t vmi, vmi_event_t *event) {
                 .procname = pass->procname,
                 .sessionid = pass->sessionid,
                 .trap_pa = s->memaccess.pa,
-                .regs = event->regs.x86,
+                .regs = event->x86_regs,
                 .vcpu = event->vcpu_id,
             };
 
@@ -279,8 +279,8 @@ done:
     event->slat_id = drakvuf->altp2m_idx;
     drakvuf->step_event[event->vcpu_id]->callback = vmi_reset_trap;
     drakvuf->step_event[event->vcpu_id]->data = drakvuf;
-    return (1u << VMI_EVENT_RESPONSE_TOGGLE_SINGLESTEP) | // Turn off singlestep
-           (1u << VMI_EVENT_RESPONSE_VMM_PAGETABLE_ID);
+    return VMI_EVENT_RESPONSE_TOGGLE_SINGLESTEP | // Turn off singlestep
+           VMI_EVENT_RESPONSE_VMM_PAGETABLE_ID;
 }
 
 /* This hits on the first access on a page, so not in singlestep yet */
@@ -304,8 +304,8 @@ event_response_t pre_mem_cb(vmi_instance_t vmi, vmi_event_t *event) {
                 );
 
     s->memaccess.pa = (event->mem_event.gfn << 12) + event->mem_event.offset;
-    char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id, event->regs.x86);
-    int64_t sessionid = drakvuf_get_current_process_sessionid(drakvuf, event->vcpu_id, event->regs.x86);
+    char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id, event->x86_regs);
+    int64_t sessionid = drakvuf_get_current_process_sessionid(drakvuf, event->vcpu_id, event->x86_regs);
 
     GSList *loop = s->traps;
     drakvuf->in_callback = 1;
@@ -320,7 +320,7 @@ event_response_t pre_mem_cb(vmi_instance_t vmi, vmi_event_t *event) {
                 .procname = procname,
                 .sessionid = sessionid,
                 .trap_pa = s->memaccess.pa,
-                .regs = event->regs.x86,
+                .regs = event->x86_regs,
                 .vcpu = event->vcpu_id,
             };
 
@@ -336,7 +336,7 @@ event_response_t pre_mem_cb(vmi_instance_t vmi, vmi_event_t *event) {
 
         if (sbp) {
             PRINT_DEBUG("Simulated INT3 event vCPU %u altp2m:%u CR3: 0x%"PRIx64" PA=0x%"PRIx64" RIP=0x%"PRIx64"\n",
-                event->vcpu_id, event->slat_id, event->regs.x86->cr3, s->memaccess.pa, event->regs.x86->rip);
+                event->vcpu_id, event->slat_id, event->x86_regs->cr3, s->memaccess.pa, event->x86_regs->rip);
 
             loop = sbp->traps;
             while(loop) {
@@ -346,7 +346,7 @@ event_response_t pre_mem_cb(vmi_instance_t vmi, vmi_event_t *event) {
                     .procname = procname,
                     .sessionid = sessionid,
                     .trap_pa = s->memaccess.pa,
-                    .regs = event->regs.x86,
+                    .regs = event->x86_regs,
                     .vcpu = event->vcpu_id,
                 };
 
@@ -393,8 +393,8 @@ event_response_t pre_mem_cb(vmi_instance_t vmi, vmi_event_t *event) {
 
         drakvuf->step_event[event->vcpu_id]->callback = post_mem_cb;
         drakvuf->step_event[event->vcpu_id]->data = pass;
-        return (1u << VMI_EVENT_RESPONSE_TOGGLE_SINGLESTEP) | // Turn on singlestep
-               (1u << VMI_EVENT_RESPONSE_VMM_PAGETABLE_ID);
+        return VMI_EVENT_RESPONSE_TOGGLE_SINGLESTEP | // Turn on singlestep
+               VMI_EVENT_RESPONSE_VMM_PAGETABLE_ID;
     }
 
     g_free(procname);
@@ -403,7 +403,7 @@ event_response_t pre_mem_cb(vmi_instance_t vmi, vmi_event_t *event) {
 
 event_response_t int3_cb(vmi_instance_t vmi, vmi_event_t *event) {
     UNUSED(vmi);
-    reg_t cr3 = event->regs.x86->cr3;
+    reg_t cr3 = event->x86_regs->cr3;
     drakvuf_t drakvuf = event->data;
     addr_t pa = (event->interrupt_event.gfn << 12)
             + event->interrupt_event.offset + event->interrupt_event.insn_length - 1;
@@ -444,8 +444,8 @@ event_response_t int3_cb(vmi_instance_t vmi, vmi_event_t *event) {
     else
         event->interrupt_event.reinject = 0;
 
-    char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id, event->regs.x86);
-    int64_t sessionid = drakvuf_get_current_process_sessionid(drakvuf, event->vcpu_id, event->regs.x86);
+    char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id, event->x86_regs);
+    int64_t sessionid = drakvuf_get_current_process_sessionid(drakvuf, event->vcpu_id, event->x86_regs);
 
     drakvuf->in_callback = 1;
     GSList *loop = s->traps;
@@ -456,7 +456,7 @@ event_response_t int3_cb(vmi_instance_t vmi, vmi_event_t *event) {
             .procname = procname,
             .sessionid = sessionid,
             .trap_pa = pa,
-            .regs = event->regs.x86,
+            .regs = event->x86_regs,
             .vcpu = event->vcpu_id,
         };
 
@@ -475,8 +475,8 @@ event_response_t int3_cb(vmi_instance_t vmi, vmi_event_t *event) {
         event->slat_id = 0;
         drakvuf->step_event[event->vcpu_id]->callback = vmi_reset_trap;
         drakvuf->step_event[event->vcpu_id]->data = drakvuf;
-        return (1u << VMI_EVENT_RESPONSE_TOGGLE_SINGLESTEP) | // Enable singlestep
-               (1u << VMI_EVENT_RESPONSE_VMM_PAGETABLE_ID);
+        return VMI_EVENT_RESPONSE_TOGGLE_SINGLESTEP | // Enable singlestep
+               VMI_EVENT_RESPONSE_VMM_PAGETABLE_ID;
     }
 
     return 0;
@@ -493,7 +493,7 @@ event_response_t cr3_cb(vmi_instance_t vmi, vmi_event_t *event) {
         PRINT_DEBUG("CR3 cb on vCPU %u: 0x%" PRIx64 "\n", event->vcpu_id, event->reg_event.value);
 #endif
 
-    event->regs.x86->cr3 = event->reg_event.value;
+    event->x86_regs->cr3 = event->reg_event.value;
 
     /* Flush the LibVMI caches */
     vmi_v2pcache_flush(drakvuf->vmi);
@@ -501,8 +501,8 @@ event_response_t cr3_cb(vmi_instance_t vmi, vmi_event_t *event) {
     vmi_rvacache_flush(drakvuf->vmi);
     vmi_symcache_flush(drakvuf->vmi);
 
-    char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id, event->regs.x86);
-    int64_t sessionid = drakvuf_get_current_process_sessionid(drakvuf, event->vcpu_id, event->regs.x86);
+    char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id, event->x86_regs);
+    int64_t sessionid = drakvuf_get_current_process_sessionid(drakvuf, event->vcpu_id, event->x86_regs);
 
     drakvuf->in_callback = 1;
     GSList *loop = drakvuf->cr3;
@@ -512,7 +512,7 @@ event_response_t cr3_cb(vmi_instance_t vmi, vmi_event_t *event) {
             .trap = trap,
             .procname = procname,
             .sessionid = sessionid,
-            .regs = event->regs.x86,
+            .regs = event->x86_regs,
             .vcpu = event->vcpu_id,
         };
 
@@ -526,6 +526,30 @@ event_response_t cr3_cb(vmi_instance_t vmi, vmi_event_t *event) {
     process_free_requests(drakvuf);
 
     return 0;
+}
+
+event_response_t debug_cb(vmi_instance_t vmi, vmi_event_t *event) {
+    addr_t pa = (event->debug_event.gfn << 12) + event->debug_event.offset;
+
+    PRINT_DEBUG("Debug event vCPU %u altp2m:%u CR3: 0x%"PRIx64" PA=0x%"PRIx64" RIP=0x%"PRIx64". Insn_length: %u\n",
+                event->vcpu_id, event->slat_id, cr3, pa,
+                event->debug_event.gla, event->debug_event.insn_length);
+
+    event->debug_event.reinject = 1;
+
+    return 0;
+}
+
+event_response_t cpuid_cb(vmi_instance_t vmi, vmi_event_t *event) {
+    addr_t pa = (event->debug_event.gfn << 12) + event->debug_event.offset;
+
+    PRINT_DEBUG("CPUID event vCPU %u altp2m:%u CR3: 0x%"PRIx64" PA=0x%"PRIx64" RIP=0x%"PRIx64". Insn_length: %u\n",
+                event->vcpu_id, event->slat_id, cr3, pa,
+                event->cpuid_event.gla, event->cpuid_event.insn_length);
+
+    event->x86_regs->rip += event->cpuid_event.insn_length;
+
+    return VMI_EVENT_RESPONSE_SET_REGISTERS;
 }
 
 void remove_trap(drakvuf_t drakvuf,
@@ -1123,6 +1147,22 @@ bool init_vmi(drakvuf_t drakvuf) {
 
     if(VMI_FAILURE == vmi_register_event(drakvuf->vmi, &drakvuf->mem_event)) {
         fprintf(stderr, "Failed to register generic mem event\n");
+        return 0;
+    }
+
+    drakvuf->debug_event.data = drakvuf;
+    drakvuf->debug_event.callback = debug_cb;
+
+    if(VMI_FAILURE == vmi_register_event(drakvuf->vmi, &drakvuf->debug_event)) {
+        fprintf(stderr, "Failed to register CR3 event\n");
+        return 0;
+    }
+
+    drakvuf->cpuid_event.data = drakvuf;
+    drakvuf->cpuid_event.callback = cpuid_cb;
+
+    if(VMI_FAILURE == vmi_register_event(drakvuf->vmi, &drakvuf->cpuid_event)) {
+        fprintf(stderr, "Failed to register CR3 event\n");
         return 0;
     }
 
