@@ -187,7 +187,7 @@ struct drakvuf {
     GHashTable *memaccess_lookup_trap; // key: trap pointer
                                        // val: struct memaccess
 
-    GSList *cr0, *cr3, *cr4;
+    GSList *cr0, *cr3, *cr4, *debug, *cpuid;
 };
 
 struct breakpoint {
