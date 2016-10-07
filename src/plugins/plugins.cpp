@@ -111,6 +111,7 @@
 #include "objmon/objmon.h"
 #include "exmon/exmon.h"
 #include "ssdtmon/ssdtmon.h"
+#include "cpuidmon/cpuidmon.h"
 
 drakvuf_plugins::drakvuf_plugins(const drakvuf_t drakvuf, output_format_t output)
 {

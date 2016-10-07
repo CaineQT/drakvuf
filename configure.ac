@@ -189,6 +189,16 @@ if test x$plugin_ssdtmon = xyes; then
   AC_DEFINE_UNQUOTED(ENABLE_PLUGIN_SSDTMON, 1, "")
 fi
 
+AC_ARG_ENABLE([plugin_cpuidmon],
+  [AS_HELP_STRING([--disable-plugin-cpuidmon],
+    [Enable the CPUID watching plugin @<:@yes@:>@])],
+  [plugin_cpuidmon="$enableval"],
+  [plugin_cpuidmon="yes"])
+AM_CONDITIONAL([PLUGIN_CPUIDMON], [test x$plugin_cpuidmon = xyes])
+if test x$plugin_cpuidmon = xyes; then
+  AC_DEFINE_UNQUOTED(ENABLE_PLUGIN_CPUIDMON, 1, "")
+fi
+
 #####################################################
 
 AC_ARG_ENABLE([hardening],
@@ -377,4 +387,5 @@ Filedelete: $plugin_filedelete
 Objmon:     $plugin_objmon
 Exmon:      $plugin_exmon
 SSDTmon:    $plugin_ssdtmon
+CPUIDmon:   $plugin_cpuidmon
 -------------------------------------------------------------------------------])

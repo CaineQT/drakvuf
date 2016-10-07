@@ -171,7 +171,9 @@ typedef enum trap_type {
     __INVALID_TRAP_TYPE,
     BREAKPOINT,
     MEMACCESS,
-    REGISTER
+    REGISTER,
+    DEBUG,
+    CPUID
 } trap_type_t;
 
 typedef enum memaccess_type {

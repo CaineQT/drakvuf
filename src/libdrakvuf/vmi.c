@@ -530,10 +530,35 @@ event_response_t cr3_cb(vmi_instance_t vmi, vmi_event_t *event) {
 
 event_response_t debug_cb(vmi_instance_t vmi, vmi_event_t *event) {
     addr_t pa = (event->debug_event.gfn << 12) + event->debug_event.offset;
+    drakvuf_t drakvuf = (drakvuf_t)event->data;
 
     PRINT_DEBUG("Debug event vCPU %u altp2m:%u CR3: 0x%"PRIx64" PA=0x%"PRIx64" RIP=0x%"PRIx64". Insn_length: %u\n",
                 event->vcpu_id, event->slat_id, cr3, pa,
                 event->debug_event.gla, event->debug_event.insn_length);
+
+    char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id, event->x86_regs);
+    int64_t sessionid = drakvuf_get_current_process_sessionid(drakvuf, event->vcpu_id, event->x86_regs);
+
+    drakvuf->in_callback = 1;
+    GSList *loop = drakvuf->debug;
+    while(loop) {
+        drakvuf_trap_t *trap = loop->data;
+        drakvuf_trap_info_t trap_info = {
+            .trap = trap,
+            .procname = procname,
+            .sessionid = sessionid,
+            .regs = event->x86_regs,
+            .vcpu = event->vcpu_id,
+        };
+
+        loop = loop->next;
+        trap->cb(drakvuf, &trap_info);
+    }
+    drakvuf->in_callback = 0;
+
+    g_free(procname);
+
+    process_free_requests(drakvuf);
 
     event->debug_event.reinject = 1;
 
@@ -542,10 +567,35 @@ event_response_t debug_cb(vmi_instance_t vmi, vmi_event_t *event) {
 
 event_response_t cpuid_cb(vmi_instance_t vmi, vmi_event_t *event) {
     addr_t pa = (event->debug_event.gfn << 12) + event->debug_event.offset;
+    drakvuf_t drakvuf = (drakvuf_t)event->data;
 
     PRINT_DEBUG("CPUID event vCPU %u altp2m:%u CR3: 0x%"PRIx64" PA=0x%"PRIx64" RIP=0x%"PRIx64". Insn_length: %u\n",
                 event->vcpu_id, event->slat_id, cr3, pa,
                 event->cpuid_event.gla, event->cpuid_event.insn_length);
+
+    char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id, event->x86_regs);
+    int64_t sessionid = drakvuf_get_current_process_sessionid(drakvuf, event->vcpu_id, event->x86_regs);
+
+    drakvuf->in_callback = 1;
+    GSList *loop = drakvuf->cpuid;
+    while(loop) {
+        drakvuf_trap_t *trap = loop->data;
+        drakvuf_trap_info_t trap_info = {
+            .trap = trap,
+            .procname = procname,
+            .sessionid = sessionid,
+            .regs = event->x86_regs,
+            .vcpu = event->vcpu_id,
+        };
+
+        loop = loop->next;
+        trap->cb(drakvuf, &trap_info);
+    }
+    drakvuf->in_callback = 0;
+
+    g_free(procname);
+
+    process_free_requests(drakvuf);
 
     event->x86_regs->rip += event->cpuid_event.insn_length;
 
@@ -674,6 +724,12 @@ void remove_trap(drakvuf_t drakvuf,
         }
         break;
     }
+    case DEBUG:
+        drakvuf->debug = g_slist_remove(drakvuf->debug, trap);
+        break;
+    case CPUID:
+        drakvuf->cpuid = g_slist_remove(drakvuf->cpuid, trap);
+        break;
     default:
         break;
     };

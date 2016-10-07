@@ -260,6 +260,16 @@ bool inject_trap_reg(drakvuf_t drakvuf, drakvuf_trap_t *trap) {
     return 0;
 }
 
+bool inject_trap_debug(drakvuf_t drakvuf, drakvuf_trap_t *trap) {
+    drakvuf->debug = g_slist_prepend(drakvuf->debug, trap);
+    return 1;
+};
+
+bool inject_trap_cpuid(drakvuf_t drakvuf, drakvuf_trap_t *trap) {
+    drakvuf->cpuid = g_slist_prepend(drakvuf->debug, trap);
+    return 1;
+};
+
 bool drakvuf_add_trap(drakvuf_t drakvuf, drakvuf_trap_t *trap) {
 
     bool ret;
@@ -283,6 +293,12 @@ bool drakvuf_add_trap(drakvuf_t drakvuf, drakvuf_trap_t *trap) {
             break;
         case REGISTER:
             ret = inject_trap_reg(drakvuf, trap);
+            break;
+        case DEBUG:
+            ret = inject_trap_debug(drakvuf, trap);
+            break;
+        case CPUID:
+            ret = inject_trap_cpuid(drakvuf, trap);
             break;
         default:
             ret = 0;
