@@ -194,6 +194,10 @@ typedef struct drakvuf_trap_info {
     addr_t trap_pa;
     x86_registers_t *regs;
     drakvuf_trap_t *trap;
+    union {
+        const cpuid_event_t *cpuid; /* For CPUID traps */
+        const debug_event_t *debug; /* For DEBUG traps */
+    };
 } drakvuf_trap_info_t;
 
 struct drakvuf_trap {
