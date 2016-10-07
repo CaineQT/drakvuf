@@ -125,7 +125,7 @@ static gpointer timer(gpointer data)
     return NULL;
 }
 
-int drakvuf_c::start_plugins(const bool* plugin_list, const char *dump_folder)
+int drakvuf_c::start_plugins(const bool* plugin_list, const char *dump_folder, bool cpuid_stealth)
 {
     int i, rc;
 
@@ -143,6 +143,10 @@ int drakvuf_c::start_plugins(const bool* plugin_list, const char *dump_folder)
                 rc = this->plugins->start((drakvuf_plugin_t)i, &c);
                 break;
             }
+
+            case PLUGIN_CPUIDMON:
+                rc = this->plugins->start((drakvuf_plugin_t)i, &cpuid_stealth);
+                break;
 
             default:
                 rc = this->plugins->start((drakvuf_plugin_t)i, this->rekall_profile);
@@ -188,13 +192,13 @@ void drakvuf_c::close()
     g_mutex_unlock(&this->loop_signal);
     g_mutex_clear(&this->loop_signal);
 
-    if (this->plugins)
-        delete this->plugins;
-
     if (this->drakvuf)
     {
         drakvuf_close(this->drakvuf);
     }
+
+    if (this->plugins)
+        delete this->plugins;
 
     if(this->timeout_thread)
     {

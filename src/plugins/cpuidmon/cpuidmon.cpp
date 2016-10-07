@@ -102,89 +102,78 @@
  *                                                                         *
  ***************************************************************************/
 
-#include <stdarg.h>
-#include "plugins.h"
-#include "syscalls/syscalls.h"
-#include "poolmon/poolmon.h"
-#include "filetracer/filetracer.h"
-#include "filedelete/filedelete.h"
-#include "objmon/objmon.h"
-#include "exmon/exmon.h"
-#include "ssdtmon/ssdtmon.h"
-#include "cpuidmon/cpuidmon.h"
+#include <config.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/prctl.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <inttypes.h>
+#include <dirent.h>
+#include <glib.h>
+#include <err.h>
 
-drakvuf_plugins::drakvuf_plugins(const drakvuf_t drakvuf, output_format_t output)
-{
-    this->drakvuf = drakvuf;
-    this->output = output;
-}
+#include <libvmi/libvmi.h>
+#include "../plugins.h"
+#include "private.h"
+#include "cpuidmon.h"
 
-drakvuf_plugins::~drakvuf_plugins()
-{
-    int i;
-    for(i=0;i<__DRAKVUF_PLUGIN_LIST_MAX;i++)
-        if ( this->plugins[i] )
-            delete this->plugins[i];
-}
+event_response_t cpuid_cb(drakvuf_t drakvuf, drakvuf_trap_info_t* info) {
 
-bool drakvuf_plugins::start(const drakvuf_plugin_t plugin_id,
-                           const void *config)
-{
-    if ( __DRAKVUF_PLUGIN_LIST_MAX != 0 &&
-         plugin_id < __DRAKVUF_PLUGIN_LIST_MAX)
-    {
-        try {
-        switch(plugin_id) {
-#ifdef ENABLE_PLUGIN_SYSCALLS
-        case PLUGIN_SYSCALLS:
-            this->plugins[plugin_id] = new syscalls(this->drakvuf, config, this->output);
-            break;
-#endif
-#ifdef ENABLE_PLUGIN_POOLMON
-        case PLUGIN_POOLMON:
-            this->plugins[plugin_id] = new poolmon(this->drakvuf, config, this->output);
-            break;
-#endif
-#ifdef ENABLE_PLUGIN_FILETRACER
-        case PLUGIN_FILETRACER:
-            this->plugins[plugin_id] = new filetracer(this->drakvuf, config, this->output);
-            break;
-#endif
-#ifdef ENABLE_PLUGIN_FILEDELETE
-        case PLUGIN_FILEDELETE:
-            this->plugins[plugin_id] = new filedelete(this->drakvuf, config, this->output);
-            break;
-#endif
-#ifdef ENABLE_PLUGIN_OBJMON
-        case PLUGIN_OBJMON:
-            this->plugins[plugin_id] = new objmon(this->drakvuf, config, this->output);
-            break;
-#endif
-#ifdef ENABLE_PLUGIN_EXMON
-        case PLUGIN_EXMON:
-            this->plugins[plugin_id] = new exmon(this->drakvuf, config, this->output);
-            break;
-#endif
-#ifdef ENABLE_PLUGIN_SSDTMON
-        case PLUGIN_SSDTMON:
-            this->plugins[plugin_id] = new ssdtmon(this->drakvuf, config, this->output);
-            break;
-#endif
-#ifdef ENABLE_PLUGIN_CPUIDMON
-        case PLUGIN_CPUIDMON:
-            this->plugins[plugin_id] = new cpuidmon(this->drakvuf, config, this->output);
-            break;
-#endif
-        default:
-            break;
-        };
-        } catch (int e) {
-            fprintf(stderr, "Plugin %s startup failed!\n", drakvuf_plugin_names[plugin_id]);
-            return 0;
+    cpuidmon* s = (cpuidmon*)info->trap->data;
+
+    switch(s->format) {
+    case OUTPUT_CSV:
+        printf("cpuidmon,%" PRIu32 ",0x%" PRIx64 ",%s,%" PRIi64 "\n",
+            info->vcpu, info->regs->cr3, info->procname, info->sessionid);
+        break;
+    default:
+    case OUTPUT_DEFAULT:
+        printf("[CPUIDMON] VCPU:%" PRIu32 " CR3:0x%" PRIx64 ",%s SessionID:%" PRIi64". "
+               "Leaf: 0x%" PRIx32 ". Subleaf: 0x%" PRIx32". "
+               "RAX: 0x%" PRIx64 " RBX: 0x%" PRIx64 " RCX: 0x%" PRIx64 " RDX: 0x%" PRIx64 "\n",
+               info->vcpu, info->regs->cr3, info->procname, info->sessionid,
+               info->cpuid->leaf, info->cpuid->subleaf,
+               info->regs->rax, info->regs->rbx, info->regs->rcx, info->regs->rdx
+            );
+        break;
+    };
+
+    if ( s->stealth ) {
+        if ( info->cpuid->leaf == 1 ) {
+            info->regs->rcx &= ~0x80000000;
         }
 
-        return 1;
+        if ( info->cpuid->leaf >= 0x40000000 && info->cpuid->leaf <= 0x40000004 ) {
+            info->regs->rax = 0;
+            info->regs->rbx = 0;
+            info->regs->rcx = 0;
+            info->regs->rdx = 0;
+        }
     }
 
     return 0;
 }
+
+/* ----------------------------------------------------- */
+
+cpuidmon::cpuidmon(drakvuf_t drakvuf, const void *config, output_format_t output) {
+
+    this->format = output;
+    this->stealth = *(bool *)config;
+
+    this->cpuid.cb = cpuid_cb;
+    this->cpuid.data = (void*)this;
+    this->cpuid.type = CPUID;
+
+    if ( !drakvuf_add_trap(drakvuf, &this->cpuid) ) {
+        PRINT_DEBUG("Failed to register CPUIDMON plugin\n");
+        throw -1;
+    }
+}
+
+cpuidmon::~cpuidmon() {}

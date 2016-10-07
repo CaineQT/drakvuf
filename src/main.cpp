@@ -138,6 +138,7 @@ int main(int argc, char** argv) {
     output_format_t output = OUTPUT_DEFAULT;
     bool plugin_list[] = {[0 ... __DRAKVUF_PLUGIN_LIST_MAX-1] = 1};
     bool verbose = 0;
+    bool cpuid_stealth = 0;
 
     fprintf(stderr, "%s v%s\n", PACKAGE_NAME, PACKAGE_VERSION);
 
@@ -160,6 +161,9 @@ int main(int argc, char** argv) {
 #ifdef VOLATILITY
                "\t -D <file dump folder>     Folder where extracted files should be stored at\n"
 #endif
+#ifdef ENABLE_PLUGIN_CPUIDMON
+               "\t -s                        Hide Hypervisor bits and signature in CPUID\n"
+#endif
 #ifdef DRAKVUF_DEBUG
                "\t -v                        Turn on verbose (debug) output\n"
 #endif
@@ -167,7 +171,7 @@ int main(int argc, char** argv) {
         return rc;
     }
 
-    while ((c = getopt (argc, argv, "r:d:i:I:e:t:D:o:vx:")) != -1)
+    while ((c = getopt (argc, argv, "r:d:i:I:e:t:D:o:vx:s")) != -1)
     switch (c)
     {
     case 'r':
@@ -197,6 +201,9 @@ int main(int argc, char** argv) {
         break;
     case 'x':
         disable_plugin(optarg, plugin_list);
+        break;
+    case 's':
+        cpuid_stealth = 1;
         break;
 #ifdef DRAKVUF_DEBUG
     case 'v':
@@ -240,7 +247,7 @@ int main(int argc, char** argv) {
             goto exit;
     }
 
-    rc = drakvuf->start_plugins(plugin_list, dump_folder);
+    rc = drakvuf->start_plugins(plugin_list, dump_folder, cpuid_stealth);
     if (!rc)
         goto exit;
 

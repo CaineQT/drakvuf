@@ -266,7 +266,8 @@ bool inject_trap_debug(drakvuf_t drakvuf, drakvuf_trap_t *trap) {
 };
 
 bool inject_trap_cpuid(drakvuf_t drakvuf, drakvuf_trap_t *trap) {
-    drakvuf->cpuid = g_slist_prepend(drakvuf->debug, trap);
+    drakvuf->cpuid = g_slist_prepend(drakvuf->cpuid, trap);
+    printf("added cpuid trap\n");
     return 1;
 };
 

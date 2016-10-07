@@ -529,11 +529,12 @@ event_response_t cr3_cb(vmi_instance_t vmi, vmi_event_t *event) {
 }
 
 event_response_t debug_cb(vmi_instance_t vmi, vmi_event_t *event) {
+    UNUSED(vmi);
     addr_t pa = (event->debug_event.gfn << 12) + event->debug_event.offset;
     drakvuf_t drakvuf = (drakvuf_t)event->data;
 
     PRINT_DEBUG("Debug event vCPU %u altp2m:%u CR3: 0x%"PRIx64" PA=0x%"PRIx64" RIP=0x%"PRIx64". Insn_length: %u\n",
-                event->vcpu_id, event->slat_id, cr3, pa,
+                event->vcpu_id, event->slat_id, event->x86_regs->cr3, pa,
                 event->debug_event.gla, event->debug_event.insn_length);
 
     char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id, event->x86_regs);
@@ -549,6 +550,7 @@ event_response_t debug_cb(vmi_instance_t vmi, vmi_event_t *event) {
             .sessionid = sessionid,
             .regs = event->x86_regs,
             .vcpu = event->vcpu_id,
+            .debug = &event->debug_event
         };
 
         loop = loop->next;
@@ -566,12 +568,13 @@ event_response_t debug_cb(vmi_instance_t vmi, vmi_event_t *event) {
 }
 
 event_response_t cpuid_cb(vmi_instance_t vmi, vmi_event_t *event) {
+    UNUSED(vmi);
     addr_t pa = (event->debug_event.gfn << 12) + event->debug_event.offset;
     drakvuf_t drakvuf = (drakvuf_t)event->data;
 
     PRINT_DEBUG("CPUID event vCPU %u altp2m:%u CR3: 0x%"PRIx64" PA=0x%"PRIx64" RIP=0x%"PRIx64". Insn_length: %u\n",
-                event->vcpu_id, event->slat_id, cr3, pa,
-                event->cpuid_event.gla, event->cpuid_event.insn_length);
+                event->vcpu_id, event->slat_id, event->x86_regs->cr3, pa,
+                event->x86_regs->rip, event->cpuid_event.insn_length);
 
     char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id, event->x86_regs);
     int64_t sessionid = drakvuf_get_current_process_sessionid(drakvuf, event->vcpu_id, event->x86_regs);
@@ -586,6 +589,7 @@ event_response_t cpuid_cb(vmi_instance_t vmi, vmi_event_t *event) {
             .sessionid = sessionid,
             .regs = event->x86_regs,
             .vcpu = event->vcpu_id,
+            .cpuid = &event->cpuid_event
         };
 
         loop = loop->next;
@@ -1206,19 +1210,23 @@ bool init_vmi(drakvuf_t drakvuf) {
         return 0;
     }
 
+    /*drakvuf->debug_event.version = VMI_EVENTS_VERSION;
+    drakvuf->debug_event.type = VMI_EVENT_DEBUG_EXCEPTION;
     drakvuf->debug_event.data = drakvuf;
     drakvuf->debug_event.callback = debug_cb;
 
     if(VMI_FAILURE == vmi_register_event(drakvuf->vmi, &drakvuf->debug_event)) {
-        fprintf(stderr, "Failed to register CR3 event\n");
+        fprintf(stderr, "Failed to register debug event\n");
         return 0;
-    }
+    }*/
 
+    drakvuf->cpuid_event.version = VMI_EVENTS_VERSION;
+    drakvuf->cpuid_event.type = VMI_EVENT_CPUID;
     drakvuf->cpuid_event.data = drakvuf;
     drakvuf->cpuid_event.callback = cpuid_cb;
 
     if(VMI_FAILURE == vmi_register_event(drakvuf->vmi, &drakvuf->cpuid_event)) {
-        fprintf(stderr, "Failed to register CR3 event\n");
+        fprintf(stderr, "Failed to register CPUID event\n");
         return 0;
     }
 
