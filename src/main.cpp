@@ -139,6 +139,7 @@ int main(int argc, char** argv) {
     bool plugin_list[] = {[0 ... __DRAKVUF_PLUGIN_LIST_MAX-1] = 1};
     bool verbose = 0;
     bool cpuid_stealth = 0;
+    bool leave_paused = 0;
 
     fprintf(stderr, "%s v%s\n", PACKAGE_NAME, PACKAGE_VERSION);
 
@@ -158,6 +159,7 @@ int main(int argc, char** argv) {
                "\t -t <timeout>              Timeout (in seconds)\n"
                "\t -o <format>               Output format (default or csv)\n"
                "\t -x <plugin>               Don't activate the specified plugin\n"
+               "\t -p                        Leave domain paused after DRAKVUF exits\n"
 #ifdef VOLATILITY
                "\t -D <file dump folder>     Folder where extracted files should be stored at\n"
 #endif
@@ -171,7 +173,7 @@ int main(int argc, char** argv) {
         return rc;
     }
 
-    while ((c = getopt (argc, argv, "r:d:i:I:e:t:D:o:vx:s")) != -1)
+    while ((c = getopt (argc, argv, "r:d:i:I:e:t:D:o:vx:sp")) != -1)
     switch (c)
     {
     case 'r':
@@ -205,6 +207,9 @@ int main(int argc, char** argv) {
     case 's':
         cpuid_stealth = 1;
         break;
+    case 'p':
+        leave_paused = 1;
+        break;
 #ifdef DRAKVUF_DEBUG
     case 'v':
         verbose = 1;
@@ -226,7 +231,7 @@ int main(int argc, char** argv) {
     }
 
     try {
-        drakvuf = new drakvuf_c(domain, rekall_profile, output, timeout, verbose);
+        drakvuf = new drakvuf_c(domain, rekall_profile, output, timeout, verbose, leave_paused);
     } catch(int e) {
         fprintf(stderr, "Failed to initialize DRAKVUF\n");
         return rc;

@@ -569,11 +569,10 @@ event_response_t debug_cb(vmi_instance_t vmi, vmi_event_t *event) {
 
 event_response_t cpuid_cb(vmi_instance_t vmi, vmi_event_t *event) {
     UNUSED(vmi);
-    addr_t pa = (event->debug_event.gfn << 12) + event->debug_event.offset;
     drakvuf_t drakvuf = (drakvuf_t)event->data;
 
-    PRINT_DEBUG("CPUID event vCPU %u altp2m:%u CR3: 0x%"PRIx64" PA=0x%"PRIx64" RIP=0x%"PRIx64". Insn_length: %u\n",
-                event->vcpu_id, event->slat_id, event->x86_regs->cr3, pa,
+    PRINT_DEBUG("CPUID event vCPU %u altp2m:%u CR3: 0x%"PRIx64" RIP=0x%"PRIx64". Insn_length: %u\n",
+                event->vcpu_id, event->slat_id, event->x86_regs->cr3,
                 event->x86_regs->rip, event->cpuid_event.insn_length);
 
     char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id, event->x86_regs);
@@ -733,6 +732,8 @@ void remove_trap(drakvuf_t drakvuf,
         break;
     case CPUID:
         drakvuf->cpuid = g_slist_remove(drakvuf->cpuid, trap);
+        if ( !drakvuf->cpuid )
+            control_cpuid_trap(drakvuf, 0);
         break;
     default:
         break;
@@ -1039,6 +1040,27 @@ bool inject_traps_modules(drakvuf_t drakvuf,
     return 0;
 }
 
+bool control_cpuid_trap(drakvuf_t drakvuf, bool toggle) {
+    drakvuf->cpuid_event.version = VMI_EVENTS_VERSION;
+    drakvuf->cpuid_event.type = VMI_EVENT_CPUID;
+    drakvuf->cpuid_event.data = drakvuf;
+    drakvuf->cpuid_event.callback = cpuid_cb;
+
+    if ( toggle ) {
+        if(VMI_FAILURE == vmi_register_event(drakvuf->vmi, &drakvuf->cpuid_event)) {
+            fprintf(stderr, "Failed to register CPUID event\n");
+            return 0;
+        }
+    } else {
+        if(VMI_FAILURE == vmi_clear_event(drakvuf->vmi, &drakvuf->cpuid_event, NULL)) {
+            fprintf(stderr, "Failed to clear CPUID event\n");
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 void drakvuf_loop(drakvuf_t drakvuf) {
 
     PRINT_DEBUG("Started DRAKVUF loop\n");
@@ -1220,16 +1242,6 @@ bool init_vmi(drakvuf_t drakvuf) {
         return 0;
     }*/
 
-    drakvuf->cpuid_event.version = VMI_EVENTS_VERSION;
-    drakvuf->cpuid_event.type = VMI_EVENT_CPUID;
-    drakvuf->cpuid_event.data = drakvuf;
-    drakvuf->cpuid_event.callback = cpuid_cb;
-
-    if(VMI_FAILURE == vmi_register_event(drakvuf->vmi, &drakvuf->cpuid_event)) {
-        fprintf(stderr, "Failed to register CPUID event\n");
-        return 0;
-    }
-
     rc = xc_altp2m_switch_to_view(drakvuf->xen->xc, drakvuf->domID, drakvuf->altp2m_idx);
     if ( rc < 0 ) {
         fprintf(stderr, "Failed to switch to altp2m view %u\n", drakvuf->altp2m_idx);
@@ -1257,8 +1269,6 @@ bool init_vmi(drakvuf_t drakvuf) {
 // -------------------------- closing
 
 void close_vmi(drakvuf_t drakvuf) {
-
-    xen_pause(drakvuf->xen, drakvuf->domID);
 
     if(drakvuf->memaccess_lookup_gfn) {
         GHashTableIter i;

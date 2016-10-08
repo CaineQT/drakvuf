@@ -901,8 +901,8 @@ int injector_start_app(drakvuf_t drakvuf, vmi_pid_t pid, uint32_t tid, const cha
         g_slist_free(loop);
     }
 
+    drakvuf_pause(drakvuf);
     drakvuf_remove_trap(drakvuf, &injector.cr3_event, NULL);
-    vmi_pause_vm(injector.vmi);
 
 done:
     PRINT_DEBUG("Finished with injection. Ret: %i\n", injector.rc);

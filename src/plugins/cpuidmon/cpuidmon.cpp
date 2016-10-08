@@ -165,6 +165,7 @@ cpuidmon::cpuidmon(drakvuf_t drakvuf, const void *config, output_format_t output
 
     this->format = output;
     this->stealth = *(bool *)config;
+    this->drakvuf = drakvuf;
 
     this->cpuid.cb = cpuid_cb;
     this->cpuid.data = (void*)this;
@@ -176,4 +177,4 @@ cpuidmon::cpuidmon(drakvuf_t drakvuf, const void *config, output_format_t output
     }
 }
 
-cpuidmon::~cpuidmon() {}
+cpuidmon::~cpuidmon(void) {}

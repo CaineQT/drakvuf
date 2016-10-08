@@ -165,12 +165,14 @@ drakvuf_c::drakvuf_c(const char* domain,
                      const char *rekall_profile,
                      const output_format_t output,
                      const int timeout,
-                     const bool verbose)
+                     const bool verbose,
+                     const bool leave_paused)
 {
     this->drakvuf = NULL;
     this->interrupted = 0;
     this->timeout = timeout;
     this->rekall_profile = rekall_profile;
+    this->leave_paused = leave_paused;
 
     if (!drakvuf_init(&this->drakvuf, domain, rekall_profile, verbose))
         throw -1;
@@ -182,7 +184,6 @@ drakvuf_c::drakvuf_c(const char* domain,
         this->timeout_thread = g_thread_new(NULL, timer, (void*)this);
 
     this->plugins = new drakvuf_plugins(this->drakvuf, output);
-    this->pause();
 }
 
 void drakvuf_c::close()
@@ -209,7 +210,9 @@ void drakvuf_c::close()
 
 drakvuf_c::~drakvuf_c()
 {
-    this->pause();
+    if ( this->leave_paused )
+        this->pause();
+
     this->close();
 }
 
