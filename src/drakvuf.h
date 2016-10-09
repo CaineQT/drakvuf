@@ -125,7 +125,6 @@ class drakvuf_c {
         drakvuf_plugins* plugins;
         GThread *timeout_thread = NULL;
         const char *rekall_profile;
-        void close();
 
     public:
         int timeout;

@@ -186,34 +186,26 @@ drakvuf_c::drakvuf_c(const char* domain,
     this->plugins = new drakvuf_plugins(this->drakvuf, output);
 }
 
-void drakvuf_c::close()
-{
-    this->interrupted = -1;
-    g_mutex_trylock(&this->loop_signal);
-    g_mutex_unlock(&this->loop_signal);
-    g_mutex_clear(&this->loop_signal);
-
-    if (this->drakvuf)
-    {
-        drakvuf_close(this->drakvuf);
-    }
-
-    if (this->plugins)
-        delete this->plugins;
-
-    if(this->timeout_thread)
-    {
-        this->interrupted = -1;
-        g_thread_join(this->timeout_thread);
-    }
-}
-
 drakvuf_c::~drakvuf_c()
 {
     if ( this->leave_paused )
         this->pause();
 
-    this->close();
+    if ( !this->interrupted )
+        this->interrupt(-1);
+
+    g_mutex_trylock(&this->loop_signal);
+    g_mutex_unlock(&this->loop_signal);
+    g_mutex_clear(&this->loop_signal);
+
+    if (this->drakvuf)
+        drakvuf_close(this->drakvuf);
+
+    if (this->plugins)
+        delete this->plugins;
+
+    if(this->timeout_thread)
+        g_thread_join(this->timeout_thread);
 }
 
 void drakvuf_c::interrupt(int signal)

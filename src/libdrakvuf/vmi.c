@@ -1269,6 +1269,9 @@ bool init_vmi(drakvuf_t drakvuf) {
 // -------------------------- closing
 
 void close_vmi(drakvuf_t drakvuf) {
+    PRINT_DEBUG("starting close_vmi_drakvuf\n");
+
+    drakvuf_pause(drakvuf);
 
     if(drakvuf->memaccess_lookup_gfn) {
         GHashTableIter i;
@@ -1279,8 +1282,8 @@ void close_vmi(drakvuf_t drakvuf) {
             vmi_set_mem_event(drakvuf->vmi, s->memaccess.gfn<<12, VMI_MEMACCESS_N, drakvuf->altp2m_idx);
             xc_altp2m_change_gfn(drakvuf->xen->xc, drakvuf->domID, drakvuf->altp2m_idx, s->memaccess.gfn, ~0);
             g_slist_free(s->traps);
+            s->traps = NULL;
         }
-        g_hash_table_destroy(drakvuf->memaccess_lookup_gfn);
     }
 
     if (drakvuf->vmi) {
@@ -1318,6 +1321,8 @@ void close_vmi(drakvuf_t drakvuf) {
         g_hash_table_destroy(drakvuf->remapped_gfns);
     };
 
+    if ( drakvuf->memaccess_lookup_gfn )
+        g_hash_table_destroy(drakvuf->memaccess_lookup_gfn);
     if(drakvuf->memaccess_lookup_trap)
         g_hash_table_destroy(drakvuf->memaccess_lookup_trap);
     if(drakvuf->breakpoint_lookup_trap)
@@ -1343,7 +1348,7 @@ void close_vmi(drakvuf_t drakvuf) {
         xc_domain_decrease_reservation_exact(drakvuf->xen->xc, drakvuf->domID, 1, 0, &drakvuf->zero_page_gfn);
     xc_domain_setmaxmem(drakvuf->xen->xc, drakvuf->domID, drakvuf->init_memsize);
 
-    xen_resume(drakvuf->xen, drakvuf->domID);
+    drakvuf_resume(drakvuf);
 
     PRINT_DEBUG("close_vmi_drakvuf finished\n");
 }
