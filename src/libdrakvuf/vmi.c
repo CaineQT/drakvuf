@@ -1335,7 +1335,7 @@ void close_vmi(drakvuf_t drakvuf) {
     };
 
     if (drakvuf->debug)
-        g_slist_free(drakvuf->debug)
+        g_slist_free(drakvuf->debug);
     if (drakvuf->cpuid)
         g_slist_free(drakvuf->cpuid);
     if (drakvuf->memaccess_lookup_gfn)
