@@ -729,6 +729,8 @@ void remove_trap(drakvuf_t drakvuf,
     }
     case DEBUG:
         drakvuf->debug = g_slist_remove(drakvuf->debug, trap);
+        if ( !drakvuf->debug )
+            control_debug_trap(drakvuf, 0);
         break;
     case CPUID:
         drakvuf->cpuid = g_slist_remove(drakvuf->cpuid, trap);
@@ -1040,6 +1042,27 @@ bool inject_traps_modules(drakvuf_t drakvuf,
     return 0;
 }
 
+bool control_debug_trap(drakvuf_t drakvuf, bool toggle) {
+    drakvuf->debug_event.version = VMI_EVENTS_VERSION;
+    drakvuf->debug_event.type = VMI_EVENT_DEBUG_EXCEPTION;
+    drakvuf->debug_event.data = drakvuf;
+    drakvuf->debug_event.callback = debug_cb;
+
+    if ( toggle ) {
+        if(VMI_FAILURE == vmi_register_event(drakvuf->vmi, &drakvuf->debug_event)) {
+            fprintf(stderr, "Failed to register DEBUG event\n");
+            return 0;
+        }
+    } else {
+        if(VMI_FAILURE == vmi_clear_event(drakvuf->vmi, &drakvuf->debug_event, NULL)) {
+            fprintf(stderr, "Failed to clear DEBUG event\n");
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 bool control_cpuid_trap(drakvuf_t drakvuf, bool toggle) {
     drakvuf->cpuid_event.version = VMI_EVENTS_VERSION;
     drakvuf->cpuid_event.type = VMI_EVENT_CPUID;
@@ -1231,16 +1254,6 @@ bool init_vmi(drakvuf_t drakvuf) {
         fprintf(stderr, "Failed to register generic mem event\n");
         return 0;
     }
-
-    /*drakvuf->debug_event.version = VMI_EVENTS_VERSION;
-    drakvuf->debug_event.type = VMI_EVENT_DEBUG_EXCEPTION;
-    drakvuf->debug_event.data = drakvuf;
-    drakvuf->debug_event.callback = debug_cb;
-
-    if(VMI_FAILURE == vmi_register_event(drakvuf->vmi, &drakvuf->debug_event)) {
-        fprintf(stderr, "Failed to register debug event\n");
-        return 0;
-    }*/
 
     rc = xc_altp2m_switch_to_view(drakvuf->xen->xc, drakvuf->domID, drakvuf->altp2m_idx);
     if ( rc < 0 ) {

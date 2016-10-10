@@ -135,6 +135,10 @@ sources += ssdtmon/ssdtmon.cpp
 endif
 
 if PLUGIN_CPUIDMON
+sources += debugmon/debugmon.cpp
+endif
+
+if PLUGIN_CPUIDMON
 sources += cpuidmon/cpuidmon.cpp
 endif
 

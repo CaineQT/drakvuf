@@ -189,6 +189,16 @@ if test x$plugin_ssdtmon = xyes; then
   AC_DEFINE_UNQUOTED(ENABLE_PLUGIN_SSDTMON, 1, "")
 fi
 
+AC_ARG_ENABLE([plugin_debugmon],
+  [AS_HELP_STRING([--disable-plugin-debugmon],
+    [Enable the debug exception watching plugin @<:@yes@:>@])],
+  [plugin_debugmon="$enableval"],
+  [plugin_debugmon="yes"])
+AM_CONDITIONAL([PLUGIN_DEBUGMON], [test x$plugin_debugmon = xyes])
+if test x$plugin_debugmon = xyes; then
+  AC_DEFINE_UNQUOTED(ENABLE_PLUGIN_DEBUGMON, 1, "")
+fi
+
 AC_ARG_ENABLE([plugin_cpuidmon],
   [AS_HELP_STRING([--disable-plugin-cpuidmon],
     [Enable the CPUID watching plugin @<:@yes@:>@])],
@@ -388,4 +398,5 @@ Objmon:     $plugin_objmon
 Exmon:      $plugin_exmon
 SSDTmon:    $plugin_ssdtmon
 CPUIDmon:   $plugin_cpuidmon
+Debugmon:   $plugin_debugmon
 -------------------------------------------------------------------------------])

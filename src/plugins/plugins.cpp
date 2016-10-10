@@ -111,6 +111,7 @@
 #include "objmon/objmon.h"
 #include "exmon/exmon.h"
 #include "ssdtmon/ssdtmon.h"
+#include "debugmon/debugmon.h"
 #include "cpuidmon/cpuidmon.h"
 
 drakvuf_plugins::drakvuf_plugins(const drakvuf_t drakvuf, output_format_t output)
@@ -168,6 +169,11 @@ bool drakvuf_plugins::start(const drakvuf_plugin_t plugin_id,
 #ifdef ENABLE_PLUGIN_SSDTMON
         case PLUGIN_SSDTMON:
             this->plugins[plugin_id] = new ssdtmon(this->drakvuf, config, this->output);
+            break;
+#endif
+#ifdef ENABLE_PLUGIN_DEBUGMON
+        case PLUGIN_DEBUGMON:
+            this->plugins[plugin_id] = new debugmon(this->drakvuf, config, this->output);
             break;
 #endif
 #ifdef ENABLE_PLUGIN_CPUIDMON

@@ -265,6 +265,9 @@ bool inject_trap_reg(drakvuf_t drakvuf, drakvuf_trap_t *trap) {
 }
 
 bool inject_trap_debug(drakvuf_t drakvuf, drakvuf_trap_t *trap) {
+    if ( !drakvuf->debug && !control_debug_trap(drakvuf, 1) )
+        return 0;
+
     drakvuf->debug = g_slist_prepend(drakvuf->debug, trap);
     return 1;
 };

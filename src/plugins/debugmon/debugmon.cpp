@@ -119,61 +119,41 @@
 
 #include <libvmi/libvmi.h>
 #include "../plugins.h"
-#include "cpuidmon.h"
+#include "debugmon.h"
 
-event_response_t cpuid_cb(drakvuf_t drakvuf, drakvuf_trap_info_t* info) {
+event_response_t debug_cb(drakvuf_t drakvuf, drakvuf_trap_info_t* info) {
 
-    cpuidmon* s = (cpuidmon*)info->trap->data;
+    debugmon* s = (debugmon*)info->trap->data;
 
     switch(s->format) {
     case OUTPUT_CSV:
-        printf("cpuidmon,%" PRIu32 ",0x%" PRIx64 ",%s,%" PRIi64 "\n",
+        printf("debugmon,%" PRIu32 ",0x%" PRIx64 ",%s,%" PRIi64 "\n",
             info->vcpu, info->regs->cr3, info->procname, info->sessionid);
         break;
     default:
     case OUTPUT_DEFAULT:
-        printf("[CPUIDMON] VCPU:%" PRIu32 " CR3:0x%" PRIx64 ",%s SessionID:%" PRIi64". "
-               "Leaf: 0x%" PRIx32 ". Subleaf: 0x%" PRIx32". "
-               "RAX: 0x%" PRIx64 " RBX: 0x%" PRIx64 " RCX: 0x%" PRIx64 " RDX: 0x%" PRIx64 "\n",
-               info->vcpu, info->regs->cr3, info->procname, info->sessionid,
-               info->cpuid->leaf, info->cpuid->subleaf,
-               info->regs->rax, info->regs->rbx, info->regs->rcx, info->regs->rdx
-            );
+        printf("[DEBUGMON] VCPU:%" PRIu32 " CR3:0x%" PRIx64 ",%s SessionID:%" PRIi64". ",
+               info->vcpu, info->regs->cr3, info->procname, info->sessionid);
         break;
     };
-
-    if ( s->stealth ) {
-        if ( info->cpuid->leaf == 1 ) {
-            info->regs->rcx &= ~0x80000000;
-        }
-
-        if ( info->cpuid->leaf >= 0x40000000 && info->cpuid->leaf <= 0x40000004 ) {
-            info->regs->rax = 0;
-            info->regs->rbx = 0;
-            info->regs->rcx = 0;
-            info->regs->rdx = 0;
-        }
-    }
 
     return 0;
 }
 
 /* ----------------------------------------------------- */
 
-cpuidmon::cpuidmon(drakvuf_t drakvuf, const void *config, output_format_t output) {
+debugmon::debugmon(drakvuf_t drakvuf, const void *config, output_format_t output) {
 
     this->format = output;
-    this->stealth = *(bool *)config;
     this->drakvuf = drakvuf;
+    this->debug.cb = debug_cb;
+    this->debug.data = (void*)this;
+    this->debug.type = DEBUG;
 
-    this->cpuid.cb = cpuid_cb;
-    this->cpuid.data = (void*)this;
-    this->cpuid.type = CPUID;
-
-    if ( !drakvuf_add_trap(drakvuf, &this->cpuid) ) {
-        fprintf(stderr, "Failed to register CPUIDMON plugin\n");
+    if ( !drakvuf_add_trap(drakvuf, &this->debug) ) {
+        fprintf(stderr, "Failed to register Debugmon plugin\n");
         throw -1;
     }
 }
 
-cpuidmon::~cpuidmon(void) {}
+debugmon::~debugmon(void) {}
