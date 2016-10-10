@@ -126,7 +126,7 @@ void drakvuf_close(drakvuf_t drakvuf, const bool pause) {
     if (drakvuf->xen) {
 
         if ( !pause )
-            xen_force_resume(drakvuf->xen);
+            drakvuf_force_resume(drakvuf->xen);
 
         xen_free_interface(drakvuf->xen);
     }
