@@ -188,9 +188,6 @@ drakvuf_c::drakvuf_c(const char* domain,
 
 drakvuf_c::~drakvuf_c()
 {
-    if ( this->leave_paused )
-        this->pause();
-
     if ( !this->interrupted )
         this->interrupt(-1);
 
@@ -199,7 +196,7 @@ drakvuf_c::~drakvuf_c()
     g_mutex_clear(&this->loop_signal);
 
     if (this->drakvuf)
-        drakvuf_close(this->drakvuf);
+        drakvuf_close(this->drakvuf, this->leave_paused);
 
     if (this->plugins)
         delete this->plugins;

@@ -264,7 +264,7 @@ bool drakvuf_init (drakvuf_t *drakvuf,
                    const char *domain,
                    const char *rekall_profile,
                    const bool verbose);
-void drakvuf_close (drakvuf_t drakvuf);
+void drakvuf_close (drakvuf_t drakvuf, const bool pause);
 bool drakvuf_add_trap(drakvuf_t drakvuf,
                       drakvuf_trap_t *trap);
 void drakvuf_remove_trap (drakvuf_t drakvuf,

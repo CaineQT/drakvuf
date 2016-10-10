@@ -115,7 +115,7 @@
 bool verbose = 0;
 #endif
 
-void drakvuf_close(drakvuf_t drakvuf) {
+void drakvuf_close(drakvuf_t drakvuf, const bool pause) {
     if (!drakvuf)
         return;
 
@@ -123,8 +123,13 @@ void drakvuf_close(drakvuf_t drakvuf) {
         close_vmi(drakvuf);
     }
 
-    if (drakvuf->xen)
+    if (drakvuf->xen) {
+
+        if ( !pause )
+            xen_force_resume(drakvuf->xen);
+
         xen_free_interface(drakvuf->xen);
+    }
 
     g_free(drakvuf->offsets);
     g_mutex_clear(&drakvuf->vmi_lock);
