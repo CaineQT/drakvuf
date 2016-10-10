@@ -126,7 +126,7 @@ void drakvuf_close(drakvuf_t drakvuf, const bool pause) {
     if (drakvuf->xen) {
 
         if ( !pause )
-            drakvuf_force_resume(drakvuf->xen);
+            drakvuf_force_resume(drakvuf);
 
         xen_free_interface(drakvuf->xen);
     }
@@ -172,7 +172,7 @@ bool drakvuf_init(drakvuf_t *drakvuf, const char *domain, const char *rekall_pro
     return 1;
 
 err:
-    drakvuf_close(*drakvuf);
+    drakvuf_close(*drakvuf, 1);
     *drakvuf = NULL;
     return 0;
 }
