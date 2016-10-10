@@ -1334,7 +1334,11 @@ void close_vmi(drakvuf_t drakvuf) {
         g_hash_table_destroy(drakvuf->remapped_gfns);
     };
 
-    if ( drakvuf->memaccess_lookup_gfn )
+    if (drakvuf->debug)
+        g_slist_free(drakvuf->debug)
+    if (drakvuf->cpuid)
+        g_slist_free(drakvuf->cpuid);
+    if (drakvuf->memaccess_lookup_gfn)
         g_hash_table_destroy(drakvuf->memaccess_lookup_gfn);
     if(drakvuf->memaccess_lookup_trap)
         g_hash_table_destroy(drakvuf->memaccess_lookup_trap);
