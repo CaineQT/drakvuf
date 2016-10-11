@@ -121,19 +121,38 @@
 #include "../plugins.h"
 #include "debugmon.h"
 
+# define HVMOP_TRAP_ext_int    0
+# define HVMOP_TRAP_nmi        2
+# define HVMOP_TRAP_hw_exc     3
+# define HVMOP_TRAP_sw_int     4
+# define HVMOP_TRAP_pri_sw_exc 5
+# define HVMOP_TRAP_sw_exc     6
+
+static const char* debug_type[] = {
+    [HVMOP_TRAP_ext_int] = "external interrupt",
+    [HVMOP_TRAP_nmi] = "nmi",
+    [HVMOP_TRAP_hw_exc] = "hardware exception",
+    [HVMOP_TRAP_sw_int] = "software interrupt",
+    [HVMOP_TRAP_pri_sw_exc] = "ICEBP",
+    [HVMOP_TRAP_sw_exc] = "software exception"
+};
+
 event_response_t debug_cb(drakvuf_t drakvuf, drakvuf_trap_info_t* info) {
 
     debugmon* s = (debugmon*)info->trap->data;
 
     switch(s->format) {
     case OUTPUT_CSV:
-        printf("debugmon,%" PRIu32 ",0x%" PRIx64 ",%s,%" PRIi64 "\n",
-            info->vcpu, info->regs->cr3, info->procname, info->sessionid);
+        printf("debugmon,%" PRIu32 ",0x%" PRIx64 ",%s,%" PRIi64 ",%" PRIx64 ",%" PRIi32 ",%s\n",
+               info->vcpu, info->regs->cr3, info->procname, info->sessionid,
+               info->regs->rip, info->debug->type, debug_type[info->debug->type]);
         break;
     default:
     case OUTPUT_DEFAULT:
-        printf("[DEBUGMON] VCPU:%" PRIu32 " CR3:0x%" PRIx64 ",%s SessionID:%" PRIi64". ",
-               info->vcpu, info->regs->cr3, info->procname, info->sessionid);
+        printf("[DEBUGMON] VCPU:%" PRIu32 " CR3:0x%" PRIx64 ",%s SessionID:%" PRIi64". "
+               "RIP: 0x%" PRIx64". Debug type: %" PRIi32 ",%s\n",
+               info->vcpu, info->regs->cr3, info->procname, info->sessionid,
+               info->regs->rip, info->debug->type, debug_type[info->debug->type]);
         break;
     };
 
