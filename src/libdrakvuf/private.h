@@ -171,6 +171,7 @@ struct drakvuf {
     unsigned int init_memsize;
     unsigned int memsize;
     addr_t kernbase;
+    addr_t kpcr[16]; // vCPU specific kpcr recorded on mov-to-cr3
 
     GHashTable *remapped_gfns; // Key: gfn
                                // val: remapped gfn

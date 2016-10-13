@@ -304,8 +304,8 @@ event_response_t pre_mem_cb(vmi_instance_t vmi, vmi_event_t *event) {
                 );
 
     s->memaccess.pa = (event->mem_event.gfn << 12) + event->mem_event.offset;
-    char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id, event->x86_regs);
-    int64_t sessionid = drakvuf_get_current_process_sessionid(drakvuf, event->vcpu_id, event->x86_regs);
+    char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id);
+    int64_t sessionid = drakvuf_get_current_process_sessionid(drakvuf, event->vcpu_id);
 
     GSList *loop = s->traps;
     drakvuf->in_callback = 1;
@@ -444,8 +444,8 @@ event_response_t int3_cb(vmi_instance_t vmi, vmi_event_t *event) {
     else
         event->interrupt_event.reinject = 0;
 
-    char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id, event->x86_regs);
-    int64_t sessionid = drakvuf_get_current_process_sessionid(drakvuf, event->vcpu_id, event->x86_regs);
+    char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id);
+    int64_t sessionid = drakvuf_get_current_process_sessionid(drakvuf, event->vcpu_id);
 
     drakvuf->in_callback = 1;
     GSList *loop = s->traps;
@@ -501,8 +501,13 @@ event_response_t cr3_cb(vmi_instance_t vmi, vmi_event_t *event) {
     vmi_rvacache_flush(drakvuf->vmi);
     vmi_symcache_flush(drakvuf->vmi);
 
-    char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id, event->x86_regs);
-    int64_t sessionid = drakvuf_get_current_process_sessionid(drakvuf, event->vcpu_id, event->x86_regs);
+    if ( vmi_get_page_mode(vmi) == VMI_PM_IA32E )
+        drakvuf->kpcr[event->vcpu_id] = event->x86_regs->gs_base;
+    else
+        drakvuf->kpcr[event->vcpu_id] = event->x86_regs->fs_base;
+
+    char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id);
+    int64_t sessionid = drakvuf_get_current_process_sessionid(drakvuf, event->vcpu_id);
 
     drakvuf->in_callback = 1;
     GSList *loop = drakvuf->cr3;
@@ -537,8 +542,8 @@ event_response_t debug_cb(vmi_instance_t vmi, vmi_event_t *event) {
                 event->vcpu_id, event->slat_id, event->x86_regs->cr3, pa,
                 event->debug_event.gla, event->debug_event.insn_length);
 
-    char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id, event->x86_regs);
-    int64_t sessionid = drakvuf_get_current_process_sessionid(drakvuf, event->vcpu_id, event->x86_regs);
+    char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id);
+    int64_t sessionid = drakvuf_get_current_process_sessionid(drakvuf, event->vcpu_id);
 
     drakvuf->in_callback = 1;
     GSList *loop = drakvuf->debug;
@@ -575,8 +580,8 @@ event_response_t cpuid_cb(vmi_instance_t vmi, vmi_event_t *event) {
                 event->vcpu_id, event->slat_id, event->x86_regs->cr3,
                 event->x86_regs->rip, event->cpuid_event.insn_length);
 
-    char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id, event->x86_regs);
-    int64_t sessionid = drakvuf_get_current_process_sessionid(drakvuf, event->vcpu_id, event->x86_regs);
+    char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id);
+    int64_t sessionid = drakvuf_get_current_process_sessionid(drakvuf, event->vcpu_id);
 
     drakvuf->in_callback = 1;
     GSList *loop = drakvuf->cpuid;

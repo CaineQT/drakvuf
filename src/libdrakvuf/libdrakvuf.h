@@ -293,11 +293,9 @@ addr_t drakvuf_get_kernel_base(drakvuf_t drakvuf);
  * on the vcpu id so it's best to specify both.
  */
 addr_t drakvuf_get_current_process(drakvuf_t drakvuf,
-                                   uint64_t vcpu_id,
-                                   const x86_registers_t *regs);
+                                   uint64_t vcpu_id);
 addr_t drakvuf_get_current_thread(drakvuf_t drakvuf,
-                                   uint64_t vcpu_id,
-                                   const x86_registers_t *regs);
+                                   uint64_t vcpu_id);
 
 /* Caller must free the returned string */
 char *drakvuf_get_process_name(drakvuf_t drakvuf,
@@ -309,7 +307,6 @@ int64_t drakvuf_get_process_sessionid(drakvuf_t drakvuf,
 
 bool drakvuf_get_current_thread_id(drakvuf_t drakvuf,
                                     uint64_t vcpu_id,
-                                    const x86_registers_t *regs,
                                     uint32_t *thread_id);
 
 addr_t drakvuf_exportsym_to_va(drakvuf_t drakvuf, addr_t eprocess_addr,
@@ -318,7 +315,7 @@ addr_t drakvuf_exportsym_to_va(drakvuf_t drakvuf, addr_t eprocess_addr,
 // Microsoft PreviousMode KTHREAD explanation:
 // https://msdn.microsoft.com/en-us/library/windows/hardware/ff559860(v=vs.85).aspx
 bool drakvuf_get_current_thread_previous_mode(drakvuf_t drakvuf,
-                                              uint64_t vcpu_id, const x86_registers_t *regs,
+                                              uint64_t vcpu_id,
                                               privilege_mode_t *previous_mode);
 
 bool drakvuf_get_thread_previous_mode(drakvuf_t drakvuf,

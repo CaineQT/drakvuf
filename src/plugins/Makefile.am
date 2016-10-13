@@ -134,7 +134,7 @@ if PLUGIN_SSDTMON
 sources += ssdtmon/ssdtmon.cpp
 endif
 
-if PLUGIN_CPUIDMON
+if PLUGIN_DEBUGMON
 sources += debugmon/debugmon.cpp
 endif
 
