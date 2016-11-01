@@ -199,7 +199,6 @@ struct breakpoint {
 
 struct memaccess {
     addr_t gfn;
-    addr_t pa;
     bool guard2;
     vmi_mem_access_t access;
 } __attribute__ ((packed));
@@ -229,6 +228,7 @@ struct remapped_gfn {
 struct memcb_pass {
     drakvuf_t drakvuf;
     uint64_t gfn;
+    addr_t pa;
     char *procname;
     int64_t sessionid;
     struct remapped_gfn *remapped_gfn;

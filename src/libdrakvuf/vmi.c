@@ -136,7 +136,7 @@ static uint8_t bp = TRAP;
 event_response_t vmi_reset_trap(vmi_instance_t vmi, vmi_event_t *event) {
     UNUSED(vmi);
     drakvuf_t drakvuf = event->data;
-    PRINT_DEBUG("reset trap on vCPU %u\n", event->vcpu_id);
+    PRINT_DEBUG("reset trap on vCPU %u, switching altp2m %u->%u\n", event->vcpu_id, event->slat_id, drakvuf->altp2m_idx);
     event->slat_id = drakvuf->altp2m_idx;
     return VMI_EVENT_RESPONSE_TOGGLE_SINGLESTEP | // Turn off singlestep
            VMI_EVENT_RESPONSE_VMM_PAGETABLE_ID;
@@ -182,7 +182,7 @@ event_response_t post_mem_cb(vmi_instance_t vmi, vmi_event_t *event) {
         goto done;
     }
 
-    PRINT_DEBUG("Post mem cb @ 0x%lx vCPU %u\n", pass->gfn, event->vcpu_id);
+    PRINT_DEBUG("Post mem cb @ 0x%lx vCPU %u altp2m %u\n", pass->pa, event->vcpu_id, event->slat_id);
 
     drakvuf->in_callback = 1;
     GSList *loop = s->traps;
@@ -196,7 +196,7 @@ event_response_t post_mem_cb(vmi_instance_t vmi, vmi_event_t *event) {
                 .trap = trap,
                 .procname = pass->procname,
                 .sessionid = pass->sessionid,
-                .trap_pa = s->memaccess.pa,
+                .trap_pa = pass->pa,
                 .regs = event->x86_regs,
                 .vcpu = event->vcpu_id,
             };
@@ -296,14 +296,15 @@ event_response_t pre_mem_cb(vmi_instance_t vmi, vmi_event_t *event) {
         return 0;
     }
 
-    PRINT_DEBUG("Pre mem cb with vCPU %u @ 0x%lx 0x%lx in view %u: %c%c%c\n",
-                event->vcpu_id, event->mem_event.gfn, event->mem_event.offset, event->slat_id,
+    addr_t pa = (event->mem_event.gfn<<12) + event->mem_event.offset;
+
+    PRINT_DEBUG("Pre mem cb with vCPU %u @ 0x%lx in view %u: %c%c%c\n",
+                event->vcpu_id, pa, event->slat_id,
                 (event->mem_event.out_access & VMI_MEMACCESS_R) ? 'r' : '-',
                 (event->mem_event.out_access & VMI_MEMACCESS_W) ? 'w' : '-',
                 (event->mem_event.out_access & VMI_MEMACCESS_X) ? 'x' : '-'
                 );
 
-    s->memaccess.pa = (event->mem_event.gfn << 12) + event->mem_event.offset;
     char *procname = drakvuf_get_current_process_name(drakvuf, event->vcpu_id);
     int64_t sessionid = drakvuf_get_current_process_sessionid(drakvuf, event->vcpu_id);
 
@@ -319,7 +320,7 @@ event_response_t pre_mem_cb(vmi_instance_t vmi, vmi_event_t *event) {
                 .trap = trap,
                 .procname = procname,
                 .sessionid = sessionid,
-                .trap_pa = s->memaccess.pa,
+                .trap_pa = pa,
                 .regs = event->x86_regs,
                 .vcpu = event->vcpu_id,
             };
@@ -332,11 +333,11 @@ event_response_t pre_mem_cb(vmi_instance_t vmi, vmi_event_t *event) {
 
     /* We need to call breakpoint handlers registered for this physical address */
     if (event->mem_event.out_access & VMI_MEMACCESS_X) {
-        struct wrapper *sbp = g_hash_table_lookup(drakvuf->breakpoint_lookup_pa, &s->memaccess.pa);
+        struct wrapper *sbp = g_hash_table_lookup(drakvuf->breakpoint_lookup_pa, &pa);
 
         if (sbp) {
             PRINT_DEBUG("Simulated INT3 event vCPU %u altp2m:%u CR3: 0x%"PRIx64" PA=0x%"PRIx64" RIP=0x%"PRIx64"\n",
-                event->vcpu_id, event->slat_id, event->x86_regs->cr3, s->memaccess.pa, event->x86_regs->rip);
+                event->vcpu_id, event->slat_id, event->x86_regs->cr3, pa, event->x86_regs->rip);
 
             loop = sbp->traps;
             while(loop) {
@@ -345,7 +346,7 @@ event_response_t pre_mem_cb(vmi_instance_t vmi, vmi_event_t *event) {
                     .trap = trap,
                     .procname = procname,
                     .sessionid = sessionid,
-                    .trap_pa = s->memaccess.pa,
+                    .trap_pa = pa,
                     .regs = event->x86_regs,
                     .vcpu = event->vcpu_id,
                 };
@@ -373,6 +374,7 @@ event_response_t pre_mem_cb(vmi_instance_t vmi, vmi_event_t *event) {
         struct memcb_pass *pass = g_malloc0(sizeof(struct memcb_pass));
         pass->drakvuf = drakvuf;
         pass->gfn = event->mem_event.gfn;
+        pass->pa = pa;
         pass->access = event->mem_event.out_access;
         pass->procname = procname;
         pass->sessionid = sessionid;
@@ -390,6 +392,8 @@ event_response_t pre_mem_cb(vmi_instance_t vmi, vmi_event_t *event) {
             }
         } else
             event->slat_id = drakvuf->altp2m_idr;
+
+        PRINT_DEBUG("Switching to altp2m view %u on vCPU %u\n", event->slat_id, event->vcpu_id);
 
         drakvuf->step_event[event->vcpu_id]->callback = post_mem_cb;
         drakvuf->step_event[event->vcpu_id]->data = pass;
