@@ -136,7 +136,7 @@ static uint8_t bp = TRAP;
 event_response_t vmi_reset_trap(vmi_instance_t vmi, vmi_event_t *event) {
     UNUSED(vmi);
     drakvuf_t drakvuf = event->data;
-    PRINT_DEBUG("reset trap, switching %u->%u\n", event->slat_id, drakvuf->altp2m_idx);
+    PRINT_DEBUG("reset trap on vCPU %u\n", event->vcpu_id);
     event->slat_id = drakvuf->altp2m_idx;
     return VMI_EVENT_RESPONSE_TOGGLE_SINGLESTEP | // Turn off singlestep
            VMI_EVENT_RESPONSE_VMM_PAGETABLE_ID;
